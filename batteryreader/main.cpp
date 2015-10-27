@@ -24,30 +24,52 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#define LOG_TAG "permissioncontroller"
+#define LOG_TAG "batteryreader"
 
-#include <binder/BinderService.h>
-#include <binder/IPermissionController.h>
+#include <batteryservice/IBatteryPropertiesListener.h>
+#include <batteryservice/IBatteryPropertiesRegistrar.h>
+
+#include <binder/IPCThreadState.h>
+#include <binder/ProcessState.h>
+#include <binder/IServiceManager.h>
 
 namespace android {
-
-class PermissionController : public BinderService<PermissionController>, public BnPermissionController
+class MyBatteryPropertiesListener : public BpInterface<IBatteryPropertiesListener>
 {
 public:
-    static const char *getServiceName() { return "permission"; }
-
-    bool checkPermission(const String16& permission, int32_t pid, int32_t uid) {
-        ALOGI("Allowing permission '%s' for pid=%d uid=%d\n", String8(permission).string(), pid, uid);
-        return true;
+    MyBatteryPropertiesListener(const sp<IBinder>& impl)
+        : BpInterface<IBatteryPropertiesListener>(impl)
+    {
+    }
+    void batteryPropertiesChanged(struct BatteryProperties props)
+    {
+        ALOGI("Battery properties changed");
     }
 };
-
-};
+}
 
 int main(int argc, char **argv)
 {
     ALOGI("Starting up");
-    android::PermissionController::publishAndJoinThreadPool();
+
+    android::sp<android::IServiceManager> sm = android::defaultServiceManager();
+    android::sp<android::IBinder> binder;
+
+    do {
+        binder = sm->getService(android::String16("batteryproperties"));
+        if (binder != 0)
+            break;
+        ALOGW("No battery service found, waiting");
+        usleep(500000);
+    } while (true);
+
+    android::sp<android::IBatteryPropertiesRegistrar> bpr = android::interface_cast<android::IBatteryPropertiesRegistrar>(binder);
+    android::sp<android::IBatteryPropertiesListener> mbl = new android::MyBatteryPropertiesListener(binder /* should this be bpr? */);
+
+    bpr->registerListener(mbl);
+
+    android::ProcessState::self()->startThreadPool();
+    android::IPCThreadState::self()->joinThreadPool();
     return 0;
 }
 
