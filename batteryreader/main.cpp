@@ -39,7 +39,8 @@ class MyBatteryPropertiesListener : public BnInterface<IBatteryPropertiesListene
 public:
     void batteryPropertiesChanged(struct BatteryProperties props)
     {
-        ALOGI("Battery properties changed");
+        ALOGI("Battery properties changed chargerAcOnline: %i, chargerUsbOnline: %i, chargerWirelessOnline %i, batteryStatus: %i, batteryHealth: %i batteryPresent: %i, batteryLevel: %i, batteryVoltage: %i, batteryTemperature: %i", props.chargerAcOnline,
+		props.chargerUsbOnline, props.chargerWirelessOnline, props.batteryStatus, props.batteryHealth, props.batteryPresent, props.batteryLevel, props.batteryVoltage, props.batteryTemperature);
     }
 
     virtual status_t    onTransact( uint32_t code,
