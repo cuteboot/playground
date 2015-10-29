@@ -34,16 +34,29 @@
 #include <binder/IServiceManager.h>
 
 namespace android {
-class MyBatteryPropertiesListener : public BpInterface<IBatteryPropertiesListener>
+class MyBatteryPropertiesListener : public BnInterface<IBatteryPropertiesListener>
 {
 public:
-    MyBatteryPropertiesListener(const sp<IBinder>& impl)
-        : BpInterface<IBatteryPropertiesListener>(impl)
-    {
-    }
     void batteryPropertiesChanged(struct BatteryProperties props)
     {
         ALOGI("Battery properties changed");
+    }
+
+    virtual status_t    onTransact( uint32_t code,
+                                    const Parcel& data,
+                                    Parcel* reply,
+                                    uint32_t flags = 0)
+    {
+        switch(code) {
+		case TRANSACT_BATTERYPROPERTIESCHANGED:
+			struct BatteryProperties props;
+			CHECK_INTERFACE(IBatteryPropertiesListener, data, reply);
+			data.readInt32();
+			props.readFromParcel((Parcel *) &data);
+			batteryPropertiesChanged(props);
+			return NO_ERROR;
+        }
+        return BBinder::onTransact(code, data, reply, flags);
     }
 };
 }
@@ -64,7 +77,7 @@ int main(int argc, char **argv)
     } while (true);
 
     android::sp<android::IBatteryPropertiesRegistrar> bpr = android::interface_cast<android::IBatteryPropertiesRegistrar>(binder);
-    android::sp<android::IBatteryPropertiesListener> mbl = new android::MyBatteryPropertiesListener(binder /* should this be bpr? */);
+    android::sp<android::IBatteryPropertiesListener> mbl = new android::MyBatteryPropertiesListener();
 
     bpr->registerListener(mbl);
 
